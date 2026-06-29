@@ -9,4 +9,4 @@ typedef struct {
 } json_file_t;
 
 
-json_file_t load_json_file(char *filename);
+json_file_t load_json_file(const char *filename);

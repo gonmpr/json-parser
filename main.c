@@ -4,7 +4,10 @@
 
 int main(void){
   json_file_t json_file = load_json_file("json_test.json");
-  if(!json_file.start){ printf("json not found\n"); }
+  if(!json_file.start){ 
+    printf("json not found\n"); 
+    return 1;
+  }
 
   printf("json loaded successfully\n");
 

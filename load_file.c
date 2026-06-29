@@ -2,11 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-size_t get_file_size(FILE *fp){
-  fseek(fp, 0, SEEK_END);
-  long size = ftell(fp); 
-  rewind(fp);
-  return (size_t)size;
+long get_file_size(FILE *fp){
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        return -1;
+    }
+    long size = ftell(fp);
+    if (size < 0) {
+        return -1;
+    }
+    rewind(fp);
+    return size;
 }
 
 json_file_t load_json_content(FILE *fp, size_t file_size) {
@@ -31,7 +36,7 @@ json_file_t load_json_content(FILE *fp, size_t file_size) {
 }
 
 
-json_file_t load_json_file(char *filename){
+json_file_t load_json_file(const char *filename){
   FILE *fp = fopen(filename, "rb");
 
   if (!fp){ //TO DO: implement a logs systems
@@ -41,8 +46,15 @@ json_file_t load_json_file(char *filename){
     return empty;
   }
 
-  size_t file_size = get_file_size(fp);
-  json_file_t json_file = load_json_content(fp, file_size);
+  long file_size = get_file_size(fp);
+  if(file_size<0){
+    printf("Error: couldn't read file size\n");
+    json_file_t empty = {0};
+    empty.start = NULL;
+    return empty;
+  }
+
+  json_file_t json_file = load_json_content(fp, (size_t)file_size);
   fclose(fp);
 
   return json_file;
