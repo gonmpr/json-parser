@@ -6,6 +6,8 @@ typedef struct json_object_t json_object_t;
 typedef struct json_pair_t json_pair_t;
 
 typedef enum {
+  JSON_PARSING_ERROR,
+
   JSON_NULL,
   JSON_BOOL,
   JSON_NUMBER,
