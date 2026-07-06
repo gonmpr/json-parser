@@ -3,9 +3,9 @@
 #include <stddef.h>
 
 typedef struct {
-  u8 *start;
-  size_t offset;
-  size_t size;
+  char *start;
+  char *cursor;
+  char *end;
 } json_file_t;
 
 

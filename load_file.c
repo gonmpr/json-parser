@@ -21,7 +21,7 @@ json_file_t load_json_content(FILE *fp, size_t file_size) {
     return loaded_file; //          couldn't open the file
   }
 
-  unsigned char *buffer = malloc(file_size);
+  char *buffer = malloc(file_size + 1);
   if (!buffer) {
     return loaded_file; //          couldn't locate memory
   }
@@ -29,8 +29,9 @@ json_file_t load_json_content(FILE *fp, size_t file_size) {
   size_t bytes_read = fread(buffer, 1, file_size, fp);
   
   loaded_file.start = buffer; 
-  loaded_file.offset = 0; 
-  loaded_file.size = bytes_read;
+  loaded_file.cursor = buffer; 
+  loaded_file.end = buffer + bytes_read;
+  buffer[bytes_read] = '\0';
 
   return loaded_file;
 }

@@ -1,4 +1,7 @@
 #pragma once
+#include <stddef.h>
+#include <stdbool.h>
+#include "load_file.h"
 
 typedef struct json_value_t json_value_t;
 typedef struct json_array_t json_array_t;
