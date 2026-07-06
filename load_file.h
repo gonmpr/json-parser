@@ -1,5 +1,4 @@
 #pragma once
-#include "globals.h"
 #include <stddef.h>
 
 typedef struct {
