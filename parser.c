@@ -2,20 +2,82 @@
 #include <string.h>
 #include <stdlib.h>
 
-void parse_json_object();
-void parse_key();
-void parse_value();
 
+void parse_key();
+
+void parse_json_object();
 void parse_array();
 
-json_value_t parse_string(json_file_t *file){
 
+/*
+  1. expect_char que avance cursor
+  2. parse_array simple: [1, true, "hola"]
+  3. parse_object simple: {"a": 1}
+  4. liberar memoria recursivamente
+*/
+
+json_value_t parse_value(json_file_t *file){
+
+  file->cursor = skip_whitespace(file->cursor);
+
+  json_value_t value = {0};
+
+  switch(*(file->cursor)){
+
+    case '{':
+      break;
+    case '[':
+      break;
+
+    case 'n':
+      value = parse_null(file);
+      break;
+
+    case '"':
+      value = parse_string(file);
+      break;
+
+    case 't':
+    case 'f':
+      value = parse_bool(file);
+      break;
+
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+    case '-':
+      value = parse_number(file);
+      break;
+    default:
+      value.type = JSON_PARSING_ERROR;
+      break;
+  }
+
+  return value;
+}
+
+
+
+
+
+
+json_value_t parse_string(json_file_t *file){
   json_value_t new_str;
   new_str.type = JSON_STRING;
 
   char *string_start = ++file->cursor;
-  while(file->cursor < file->end && *(file->cursor) != '"')
+  while(file->cursor < file->end && *(file->cursor) != '"' ){
+    if(*(file->cursor) == '\\') file->cursor++; // TODO: escape symbols
     file->cursor++;
+  }
+  
   if(file->cursor == file->end){
     new_str.type = JSON_PARSING_ERROR;
     return new_str;
