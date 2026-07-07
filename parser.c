@@ -6,11 +6,17 @@
 void parse_key();
 
 void parse_json_object();
-void parse_array();
+json_value_t parse_array(json_file_t *file){
+  json_array_t array = {0};
+
+
+
+}
+
+
 
 
 /*
-  1. expect_char que avance cursor
   2. parse_array simple: [1, true, "hola"]
   3. parse_object simple: {"a": 1}
   4. liberar memoria recursivamente
@@ -162,7 +168,7 @@ json_value_t parse_null(json_file_t *file){
 
 }
 
-
+//auxiliares parsers
 char *skip_whitespace(char *steps){
   char *new_steps = steps;
   while(*new_steps == ' ' || *new_steps == '\t' || *new_steps == '\n')
@@ -170,9 +176,66 @@ char *skip_whitespace(char *steps){
   return new_steps;
 }
 
-bool expect_char(char *chr, char expected){
-  if (*chr == expected) return 1;
+bool expect_char(json_file_t *file, char expected){
+  if (*(file->cursor) == expected){
+    file->cursor++;
+    return 1;
+  }
   return 0;
 }
 
 
+
+//auxiliares arrays
+json_array_t *json_array_new(size_t capacity){
+  json_array_t *new_arr = malloc(sizeof(json_array_t));
+  if(!new_arr) return NULL;
+
+  json_value_t *items = capacity == 0 ? NULL : 
+                        malloc(sizeof(json_value_t) * capacity);
+  if(capacity > 0 && !items){
+    free(new_arr);
+    return NULL;
+  }
+
+  *new_arr = (json_array_t){.items = items, .count = 0, .capacity = capacity};
+  return new_arr;
+
+}
+
+bool json_array_push(json_array_t *array, json_value_t value){
+  if(!array) return 0;
+
+  if(array->count == array->capacity){
+    size_t new_capacity = array->capacity == 0 ? 4 : array->capacity * 2;
+    json_value_t *new_items = realloc(array->items, 
+                              sizeof(json_value_t) * new_capacity);
+    if(!new_items) return 0;
+
+    array->items = new_items;
+    array->capacity = new_capacity;
+  }
+
+  array->items[array->count] = value;
+  array->count++;
+  return 1;
+}
+
+void json_array_free(json_array_t *array);
+/*
+json_array_free
+  libera todos los values internos
+  libera items
+  libera el array
+*/
+
+    
+//auxiliares objetos
+
+/*
+json_object_new
+json_object_push
+json_object_free
+*/
+
+//json_value_free
