@@ -3,36 +3,24 @@
 #include <stdlib.h>
 
 
-void parse_key();
-
-void parse_json_object();
-json_value_t parse_array(json_file_t *file){
-  json_array_t array = {0};
-
-
-
-}
-
-
-
 
 /*
-  2. parse_array simple: [1, true, "hola"]
   3. parse_object simple: {"a": 1}
-  4. liberar memoria recursivamente
 */
 
 json_value_t parse_value(json_file_t *file){
-
-  file->cursor = skip_whitespace(file->cursor);
+  skip_whitespace(file);
 
   json_value_t value = {0};
 
   switch(*(file->cursor)){
 
     case '{':
+      value = parse_object(file, json_object_new(4));
       break;
+
     case '[':
+      value = parse_array(file, json_array_new(4));
       break;
 
     case 'n':
@@ -69,6 +57,64 @@ json_value_t parse_value(json_file_t *file){
   return value;
 }
 
+
+json_value_t parse_array(json_file_t *file, json_array_t *new_array){
+  if(!expect_char(file, '[')) return (json_value_t){0};
+  if(expect_char(file, ']')) return (json_value_t){0};
+
+  skip_whitespace(file);
+  if(value.type == JSON_PARSING_ERROR) return (json_value_t){0};
+
+  while(){
+    json_value_t new_value = parse_value(file);
+    json_array_push(new_array, new_value);
+    expect_char(file, ',');
+
+    if(!expect_char(file, ']') && expect_char(file, ',')) continue;
+    else break;
+  }
+
+  json_value_t array_value = {0};
+  array_value.type = JSON_ARRAY;
+  array_value.array = new_array;
+  return array_value;
+
+}
+
+
+
+
+json_value_t parse_object(json_file_t *file, json_object_t *new_object){
+  if(!expect_char(file, '{')) return (json_value_t){0};
+  if(expect_char(file, '}')) return (json_value_t){0};
+
+  skip_whitespace(file);
+  if(value.type == JSON_PARSING_ERROR) return (json_value_t){0};
+
+  while(){
+    char *new_key = parse_key(); //TODO 
+    if(!expect_char(file, ':')) break; 
+
+    json_value_t new_value = parse_value(file);
+    json_pair_t new_pair = (json_pair_t){.key = new_key, .value = new_value};
+
+    json_object_push(new_object, new_pair);
+
+    if(!expect_char(file, '}') && expect_char(file, ',')) continue;
+    else break;
+  }
+
+  json_value_t object_value = {0};
+  object_value.type = JSON_OBJECT;
+  object_value.object = new_object;
+  return object_value;
+}
+
+
+
+
+
+char *parse_key(json_file_t *file); //TODO
 
 
 
@@ -169,14 +215,14 @@ json_value_t parse_null(json_file_t *file){
 }
 
 //auxiliares parsers
-char *skip_whitespace(char *steps){
-  char *new_steps = steps;
-  while(*new_steps == ' ' || *new_steps == '\t' || *new_steps == '\n')
-    new_steps++;
-  return new_steps;
+void skip_whitespace(json_file_t *file){
+  while(*file->cursor == ' ' || *file->cursor == '\t' 
+        || *file->cursor == '\n' || *file->cursor == '\r')
+    file->cursor++;
 }
 
 bool expect_char(json_file_t *file, char expected){
+  skip_whitespace(file);
   if (*(file->cursor) == expected){
     file->cursor++;
     return 1;
@@ -221,21 +267,91 @@ bool json_array_push(json_array_t *array, json_value_t value){
   return 1;
 }
 
-void json_array_free(json_array_t *array);
-/*
-json_array_free
-  libera todos los values internos
-  libera items
-  libera el array
-*/
 
     
 //auxiliares objetos
 
-/*
-json_object_new
-json_object_push
-json_object_free
-*/
+json_object_t *json_object_new(size_t capacity){
 
-//json_value_free
+  json_object_t *new_obj = malloc(sizeof(json_object_t));
+  if(!new_obj) return NULL;
+
+  json_pair_t *new_pairs = capacity == 0 ? NULL : 
+                           malloc(sizeof(json_pair_t) * capacity);
+  if(capacity > 0 && !new_pairs){
+    free(new_obj);
+    return NULL;
+  }
+
+  *new_obj = (json_object_t){.pairs = new_pairs, 
+                             .count = 0, 
+                             .capacity = capacity};
+  
+  return new_obj;
+}
+
+
+bool json_object_push(json_object_t *object, json_pair_t pair){
+  if(!object) return 0;
+
+  if(object->count == object->capacity){
+    size_t new_capacity = object->capacity == 0 ? 4 : object->capacity * 2;
+    json_pair_t *new_pairs = realloc(object->pairs, 
+                              sizeof(json_pair_t) * new_capacity);
+    if(!new_pairs) return 0;
+
+    object->pairs = new_pairs;
+    object->capacity = new_capacity;
+  }
+
+  object->pairs[object->count] = pair;
+  object->count++;
+  return 1;
+
+}
+
+
+// liberadores 
+
+void json_value_free(json_value_t *value){
+  if(!value) return;
+
+  switch(value->type){
+
+    case JSON_ARRAY:
+      json_array_free(value->array);
+      break;
+
+    case JSON_OBJECT:
+      json_object_free(value->object);
+      break;
+
+    case JSON_STRING:
+      free(value->string);
+      break;
+
+    default:
+      break;
+  }
+
+}
+
+
+void json_array_free(json_array_t *array){
+  if(!array) return;
+  for(size_t i = 0; i < array->count; i++){
+    json_value_free(&(array->items[i]));
+  }
+  free(array->items);
+  free(array);
+}
+
+void json_object_free(json_object_t *object){
+  if(!object) return;
+  for(size_t i = 0; i < object->count; i++){
+    json_value_free(&((object->pairs[i]).value));
+    free((object->pairs[i]).key);
+  }
+  free(object->pairs);
+  free(object);
+}
