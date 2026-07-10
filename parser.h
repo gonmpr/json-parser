@@ -19,6 +19,18 @@ typedef enum {
   JSON_OBJECT,
 } json_data_type;
 
+struct json_value_t {
+    json_data_type type;
+
+    union {
+        double        number;
+        int           boolean;
+        char          *string;
+        json_array_t  *array;
+        json_object_t *object;
+    };
+};
+
 struct json_array_t {
     json_value_t *items;
     size_t       count;
@@ -36,15 +48,29 @@ struct json_object_t {
     size_t       capacity;
 };
 
-struct json_value_t {
+/* parser */
+json_value_t parse_value(json_file_t *file);
+json_value_t parse_array(json_file_t *file);
+json_value_t parse_object(json_file_t *file);
+json_value_t parse_string(json_file_t *file);
+json_value_t parse_number(json_file_t *file);
+json_value_t parse_bool(json_file_t *file);
+json_value_t parse_null(json_file_t *file);
 
-    json_data_type type;
+char *parse_key(json_file_t *file);
 
-    union {
-        double        number;
-        int           boolean;
-        char          *string;
-        json_array_t  *array;
-        json_object_t *object;
-    };
-};
+void skip_whitespace(json_file_t *file);
+bool expect_char(json_file_t *file, char expected);
+
+/* arrays */
+json_array_t *json_array_new(size_t capacity);
+bool json_array_push(json_array_t *array, json_value_t value);
+void json_array_free(json_array_t *array);
+
+/* objects */
+json_object_t *json_object_new(size_t capacity);
+bool json_object_push(json_object_t *object, json_pair_t pair);
+void json_object_free(json_object_t *object);
+
+/* free */
+void json_value_free(json_value_t *value);

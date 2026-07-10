@@ -4,10 +4,6 @@
 
 
 
-/*
-  3. parse_object simple: {"a": 1}
-*/
-
 json_value_t parse_value(json_file_t *file){
   skip_whitespace(file);
 
@@ -16,11 +12,11 @@ json_value_t parse_value(json_file_t *file){
   switch(*(file->cursor)){
 
     case '{':
-      value = parse_object(file, json_object_new(4));
+      value = parse_object(file);
       break;
 
     case '[':
-      value = parse_array(file, json_array_new(4));
+      value = parse_array(file);
       break;
 
     case 'n':
@@ -58,20 +54,27 @@ json_value_t parse_value(json_file_t *file){
 }
 
 
-json_value_t parse_array(json_file_t *file, json_array_t *new_array){
-  if(!expect_char(file, '[')) return (json_value_t){0};
-  if(expect_char(file, ']')) return (json_value_t){0};
+json_value_t parse_array(json_file_t *file){
+  if(!expect_char(file, '[')) 
+    return (json_value_t){0};
+  if(expect_char(file, ']')) 
+    return (json_value_t){.type=JSON_ARRAY,.array = json_array_new(0)};
 
+  json_array_t *new_array = json_array_new(4);
+  if (!new_array)
+      return (json_value_t){ .type = JSON_PARSING_ERROR };
   skip_whitespace(file);
-  if(value.type == JSON_PARSING_ERROR) return (json_value_t){0};
 
-  while(){
+  while(true){
     json_value_t new_value = parse_value(file);
     json_array_push(new_array, new_value);
-    expect_char(file, ',');
 
-    if(!expect_char(file, ']') && expect_char(file, ',')) continue;
-    else break;
+    if(expect_char(file, ']')) break;
+    else if(expect_char(file, ',')) continue;
+    else {
+      json_array_free(new_array);
+      return (json_value_t){.type=JSON_PARSING_ERROR};
+    }
   }
 
   json_value_t array_value = {0};
@@ -84,24 +87,37 @@ json_value_t parse_array(json_file_t *file, json_array_t *new_array){
 
 
 
-json_value_t parse_object(json_file_t *file, json_object_t *new_object){
-  if(!expect_char(file, '{')) return (json_value_t){0};
-  if(expect_char(file, '}')) return (json_value_t){0};
+json_value_t parse_object(json_file_t *file){
+  if(!expect_char(file, '{')) 
+    return (json_value_t){0};
+  if(expect_char(file, '}')) 
+    return (json_value_t){.type=JSON_OBJECT,.object = json_object_new(0)};
+
+  json_object_t *new_object = json_object_new(4);
+  if (!new_object)
+      return (json_value_t){ .type = JSON_PARSING_ERROR };
 
   skip_whitespace(file);
-  if(value.type == JSON_PARSING_ERROR) return (json_value_t){0};
 
-  while(){
-    char *new_key = parse_key(); //TODO 
-    if(!expect_char(file, ':')) break; 
+  while(true){
+    char *new_key = parse_key(file);  
+    if(!new_key || !expect_char(file, ':')){
+      free(new_key);
+      json_object_free(new_object);
+      return (json_value_t){.type=JSON_PARSING_ERROR};
+    }
 
     json_value_t new_value = parse_value(file);
     json_pair_t new_pair = (json_pair_t){.key = new_key, .value = new_value};
 
     json_object_push(new_object, new_pair);
 
-    if(!expect_char(file, '}') && expect_char(file, ',')) continue;
-    else break;
+    if(expect_char(file, '}')) break;
+    else if(expect_char(file, ',')) continue;
+    else{
+      json_object_free(new_object);
+      return (json_value_t){.type=JSON_PARSING_ERROR};
+    }
   }
 
   json_value_t object_value = {0};
@@ -112,11 +128,13 @@ json_value_t parse_object(json_file_t *file, json_object_t *new_object){
 
 
 
-
-
-char *parse_key(json_file_t *file); //TODO
-
-
+char *parse_key(json_file_t *file){
+  skip_whitespace(file);
+  json_value_t value = parse_string(file);
+  if(value.type != JSON_STRING)
+    return NULL;
+  return value.string;
+}
 
 
 
@@ -124,12 +142,20 @@ json_value_t parse_string(json_file_t *file){
   json_value_t new_str;
   new_str.type = JSON_STRING;
 
+  skip_whitespace(file);
+
+  if (*file->cursor != '"') {
+    new_str.type = JSON_PARSING_ERROR;
+    return new_str;
+  }
+
   char *string_start = ++file->cursor;
+
   while(file->cursor < file->end && *(file->cursor) != '"' ){
-    if(*(file->cursor) == '\\') file->cursor++; // TODO: escape symbols
+    if(*(file->cursor) == '\\') file->cursor++;
     file->cursor++;
   }
-  
+
   if(file->cursor == file->end){
     new_str.type = JSON_PARSING_ERROR;
     return new_str;
@@ -137,7 +163,7 @@ json_value_t parse_string(json_file_t *file){
 
   size_t str_size = file->cursor - string_start;
 
-  char *str_ptr = malloc(str_size + 1);               //ALLOCATION
+  char *str_ptr = malloc(str_size + 1);
   if(!str_ptr){
     new_str.type = JSON_PARSING_ERROR;
     file->cursor = file->end;
@@ -147,6 +173,7 @@ json_value_t parse_string(json_file_t *file){
   for(size_t i = 0; i < str_size; i++){
     str_ptr[i] = *(string_start + i);
   }
+
   str_ptr[str_size] = '\0';
   new_str.string = str_ptr;
 
